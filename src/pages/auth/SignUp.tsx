@@ -6,18 +6,58 @@ import { Button } from "@/components/ui/button";
 import AuthLayout from "@/components/auth/AuthLayout";
 import SocialAuth from "@/components/auth/SocialAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import { useNavigate } from "react-router-dom";
 
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState("weak");
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    password_confirmation: "",
+    phone: "",
+    name: "",
+    address: "",
+    businessTypeId: "ofv92yk3rxne25rucri1a0sg", // Default business type ID
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      const formPayload = new FormData();
+      Object.entries(data).forEach(([key, value]) => {
+        formPayload.append(key, value);
+      });
+      return apiClient.register(formPayload);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Account created",
+        description: "Please check your email for verification.",
+      });
+      navigate("/login");
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Registration failed",
+        description: error.message,
+      });
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Account created",
-      description: "Please check your email for verification.",
-    });
+    mutation.mutate(formData);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   return (
@@ -32,9 +72,24 @@ const SignUp = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
+            <label className="text-sm font-medium">Business Name</label>
+            <Input
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="Your Business Name"
+              className="w-full"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
             <label className="text-sm font-medium">Email</label>
             <Input
               type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
               placeholder="E.g., example@business.com"
               className="w-full"
               required
@@ -47,8 +102,27 @@ const SignUp = () => {
               <select className="w-24 rounded-md border border-input px-3">
                 <option>🇳🇬 +234</option>
               </select>
-              <Input type="tel" className="flex-1" required />
+              <Input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                className="flex-1"
+                required
+              />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Business Address</label>
+            <Input
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              placeholder="Business Address"
+              className="w-full"
+              required
+            />
           </div>
 
           <div className="space-y-2">
@@ -56,6 +130,9 @@ const SignUp = () => {
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
                 className="w-full pr-10"
                 required
               />
@@ -96,6 +173,9 @@ const SignUp = () => {
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
+                name="password_confirmation"
+                value={formData.password_confirmation}
+                onChange={handleChange}
                 placeholder="Re-enter your password"
                 className="w-full pr-10"
                 required
@@ -103,8 +183,12 @@ const SignUp = () => {
             </div>
           </div>
 
-          <Button type="submit" className="w-full">
-            Create Account
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={mutation.isPending}
+          >
+            {mutation.isPending ? "Creating Account..." : "Create Account"}
           </Button>
         </form>
 
